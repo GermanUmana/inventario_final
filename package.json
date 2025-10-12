@@ -1,0 +1,14 @@
+{
+  "name": "todo-tasks",
+  "version": "1.0.0",
+  "description": "Aplicacion para generar tareas desplegadas NodeJS y Express",
+  "main": "serve.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "german umana",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
