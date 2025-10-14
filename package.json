@@ -9,6 +9,8 @@
   "author": "german umana",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1",
+    "node-env-file": "^0.1.8"
   }
 }
