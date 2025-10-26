@@ -37,13 +37,20 @@ mongoose.connect(db, {
 
 router.post('/create-task', function (req, res) {
     let task_id = req.body.TaskId;
-    let name = req.body.Name;
-    let deadline = req.body.Deadline;
+    let marca=req.body.Marca;
+    let modelo=req.body.Modelo;
+    let tipo=req.body.Tipo;
+    let cantidad=req.body.Cantidad;
+    let version=req.body.Version;
+
 
     let task = {
         TaskId: task_id,
-        Name: name,
-        Deadline: deadline
+        Marca:marca,
+        Version:version,
+        Modelo:modelo,
+        Tipo:tipo,
+        Cantidad:cantidad
     }
 
     var newTask = new TaskModel(task);
@@ -73,8 +80,11 @@ router.post('/update-task', function (req, res) {
     TaskModel.updateOne(
         { TaskId: req.body.TaskId }, 
         {
-            Name: req.body.Name,
-            Deadline: req.body.Deadline
+            Marca:req.body.Marca,
+            Version:req.body.Version,
+            Modelo:req.body.Modelo,
+            Tipo:req.body.Tipo,
+            Cantidad:req.body.Cantidad
         }
     )
         .then(data => {

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es" ng-app="inventoryApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Repuestos para Moto</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body ng-controller="InventoryController">
+
+    <!-- Header -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-motorcycle me-2"></i>
+                Inventario de Repuestos para Moto
+            </span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+
+        <!-- Alert Messages -->
+        <div ng-show="alertMessage" class="alert alert-{{alertType}} alert-dismissible fade show" role="alert">
+            {{alertMessage}}
+            <button type="button" class="btn-close" ng-click="closeAlert()"></button>
+        </div>
+
+        <!-- Create/Edit Task Form -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-{{isEditing ? 'edit' : 'plus-circle'}} me-2"></i>
+                    {{isEditing ? 'Editar' : 'Agregar'}} Repuesto
+                </h5>
+            </div>
+            <div class="card-body">
+                <form ng-submit="isEditing ? updateTask() : createTask()">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <label class="form-label">ID</label>
+                            <input type="number" class="form-control" ng-model="newTask.TaskId"
+                                   ng-disabled="isEditing" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Marca</label>
+                            <input type="text" class="form-control" ng-model="newTask.Marca"
+                                   placeholder="Honda, Yamaha..." required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Modelo</label>
+                            <input type="number" class="form-control" ng-model="newTask.Modelo"
+                                   placeholder="2020" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo</label>
+                            <input type="text" class="form-control" ng-model="newTask.Tipo"
+                                   placeholder="Filtro, Llanta..." required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" class="form-control" ng-model="newTask.Cantidad"
+                                   min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Versión</label>
+                            <input type="text" class="form-control" ng-model="newTask.Version"
+                                   placeholder="v1.0" required>
+                        </div>
+                        <div class="col-md-9 d-flex align-items-end">
+                            <button type="submit" class="btn btn-{{isEditing ? 'warning' : 'success'}} me-2">
+                                <i class="fas fa-{{isEditing ? 'save' : 'plus'}} me-1"></i>
+                                {{isEditing ? 'Actualizar' : 'Agregar'}}
+                            </button>
+                            <button type="button" class="btn btn-secondary" ng-show="isEditing"
+                                    ng-click="cancelEdit()">
+                                <i class="fas fa-times me-1"></i>
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>
+                    Filtros
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Marca</label>
+                        <input type="text" class="form-control" ng-model="filters.Marca"
+                               placeholder="Filtrar por marca">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Modelo</label>
+                        <input type="text" class="form-control" ng-model="filters.Modelo"
+                               placeholder="Filtrar por modelo">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Tipo</label>
+                        <input type="text" class="form-control" ng-model="filters.Tipo"
+                               placeholder="Filtrar por tipo">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Versión</label>
+                        <input type="text" class="form-control" ng-model="filters.Version"
+                               placeholder="Filtrar por versión">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-secondary w-100"
+                                ng-click="clearFilters()">
+                            <i class="fas fa-eraser me-1"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks Table -->
+        <div class="card">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Inventario
+                </h5>
+                <span class="badge bg-light text-dark">
+                    Total: {{(tasks | filter:filters).length}} repuesto(s)
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Marca</th>
+                                <th>Modelo</th>
+                                <th>Tipo</th>
+                                <th>Cantidad</th>
+                                <th>Versión</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="task in tasks | filter:filters"
+                                ng-class="{'table-warning': task.Cantidad < 5, 'table-danger': task.Cantidad == 0}">
+                                <td>{{task.TaskId}}</td>
+                                <td>{{task.Marca}}</td>
+                                <td>{{task.Modelo}}</td>
+                                <td>{{task.Tipo}}</td>
+                                <td>
+                                    <span class="badge bg-{{task.Cantidad == 0 ? 'danger' : task.Cantidad < 5 ? 'warning' : 'success'}}">
+                                        {{task.Cantidad}}
+                                    </span>
+                                </td>
+                                <td>{{task.Version}}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-warning me-1"
+                                            ng-click="editTask(task)" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger"
+                                            ng-click="deleteTask(task.TaskId)" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr ng-show="tasks.length == 0">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                    No hay repuestos en el inventario
+                                </td>
+                            </tr>
+                            <tr ng-show="tasks.length > 0 && (tasks | filter:filters).length == 0">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-search fa-3x mb-3 d-block"></i>
+                                    No se encontraron repuestos con los filtros aplicados
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-5 py-3 bg-light text-center text-muted">
+        <p class="mb-0">Inventario de Repuestos para Moto &copy; 2025</p>
+    </footer>
+
+    <!-- AngularJS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom Angular App -->
+    <script src="js/app.js"></script>
+
+</body>
+</html>
