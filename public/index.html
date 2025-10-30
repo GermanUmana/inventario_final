@@ -46,34 +46,41 @@
                         <div class="col-md-2">
                             <label class="form-label">ID</label>
                             <input type="number" class="form-control" ng-model="newTask.TaskId"
-                                   ng-disabled="isEditing" required>
+                                   ng-disabled="true" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">Marca</label>
-                            <input type="text" class="form-control" ng-model="newTask.Marca"
-                                   placeholder="Honda, Yamaha..." required>
+                            <select class="form-select" ng-model="newTask.Marca" ng-change="onMarcaChange()" required>
+                                <option value="">Seleccione una marca</option>
+                                <option ng-repeat="marca in marcas" value="{{marca}}">{{marca}}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Versión</label>
+                            <select class="form-select" ng-model="newTask.Version"
+                                    ng-disabled="!newTask.Marca || getVersiones().length === 0" required>
+                                <option value="">Seleccione una versión</option>
+                                <option ng-repeat="version in getVersiones()" value="{{version}}">{{version}}</option>
+                            </select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Modelo</label>
                             <input type="number" class="form-control" ng-model="newTask.Modelo"
-                                   placeholder="2020" required>
+                                   placeholder="2020" min="2010" max="2026" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">Tipo</label>
-                            <input type="text" class="form-control" ng-model="newTask.Tipo"
-                                   placeholder="Filtro, Llanta..." required>
+                            <select class="form-select" ng-model="newTask.Tipo" required>
+                                <option value="">Seleccione un tipo</option>
+                                <option ng-repeat="tipo in tipos" value="{{tipo}}">{{tipo}}</option>
+                            </select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Cantidad</label>
                             <input type="number" class="form-control" ng-model="newTask.Cantidad"
                                    min="0" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Versión</label>
-                            <input type="text" class="form-control" ng-model="newTask.Version"
-                                   placeholder="v1.0" required>
-                        </div>
-                        <div class="col-md-9 d-flex align-items-end">
+                        <div class="col-md-12 d-flex align-items-end">
                             <button type="submit" class="btn btn-{{isEditing ? 'warning' : 'success'}} me-2">
                                 <i class="fas fa-{{isEditing ? 'save' : 'plus'}} me-1"></i>
                                 {{isEditing ? 'Actualizar' : 'Agregar'}}
@@ -138,7 +145,7 @@
                     Inventario
                 </h5>
                 <span class="badge bg-light text-dark">
-                    Total: {{(tasks | filter:filters).length}} repuesto(s)
+                    Total: {{(tasks | safeFilter:filters).length}} repuesto(s)
                 </span>
             </div>
             <div class="card-body p-0">
@@ -156,7 +163,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="task in tasks | filter:filters"
+                            <tr ng-repeat="task in tasks | safeFilter:filters track by task._id"
                                 ng-class="{'table-warning': task.Cantidad < 5, 'table-danger': task.Cantidad == 0}">
                                 <td>{{task.TaskId}}</td>
                                 <td>{{task.Marca}}</td>
@@ -185,7 +192,7 @@
                                     No hay repuestos en el inventario
                                 </td>
                             </tr>
-                            <tr ng-show="tasks.length > 0 && (tasks | filter:filters).length == 0">
+                            <tr ng-show="tasks.length > 0 && (tasks | safeFilter:filters).length == 0">
                                 <td colspan="7" class="text-center text-muted py-4">
                                     <i class="fas fa-search fa-3x mb-3 d-block"></i>
                                     No se encontraron repuestos con los filtros aplicados
