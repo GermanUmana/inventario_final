@@ -1,7 +1,11 @@
 var mongoose = require("mongoose");
 var express = require("express");
 var TaskModel = require('./task_schema');
+var UserModel = require('./user_schema');
 var router = express.Router();
+
+// Store sessions in memory (for development - use express-session/Redis in production)
+const sessions = {};
 
 let environment = null;
 
@@ -21,8 +25,8 @@ environment = {
 var query = 'mongodb+srv://' + environment.DBMONGOUSER + ':' + environment.DBMONGOPASS + '@' + environment.DBMONGOSERV + '/' + environment.DBMONGO + '?retryWrites=true&w=majority&appName=Cluster0';
 
 
-var query = "mongodb+srv://user:1234@cluster0.yqg7blw.mongodb.net/taskBD?retryWrites=true&w=majority&appName=Cluster0"
-const db = (query);
+// Use environment variables for database connection
+const db = query;
 
 mongoose.Promise = global.Promise;
 
@@ -35,7 +39,150 @@ mongoose.connect(db, {
     console.error('Error al conectar a la base de datos', err);
 });
 
-router.post('/create-task', function (req, res) {
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+// Middleware to check if user is authenticated
+function isAuthenticated(req, res, next) {
+    const token = req.headers['authorization'];
+
+    if (!token) {
+        return res.status(401).json({ message: 'No autorizado. Token requerido.' });
+    }
+
+    const session = sessions[token];
+    if (!session) {
+        return res.status(401).json({ message: 'Sesión inválida o expirada.' });
+    }
+
+    req.user = session.user;
+    next();
+}
+
+// Middleware to check if user is Administrator
+function isAdmin(req, res, next) {
+    if (req.user.role !== 'Administrador') {
+        return res.status(403).json({ message: 'Acceso denegado. Se requiere rol de Administrador.' });
+    }
+    next();
+}
+
+// Generate simple token (use JWT in production)
+function generateToken() {
+    return 'token_' + Math.random().toString(36).substr(2) + Date.now().toString(36);
+}
+
+// ============================================
+// AUTHENTICATION ENDPOINTS
+// ============================================
+
+// Register new user
+router.post('/register', function (req, res) {
+    const { username, password, role } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Usuario y contraseña son requeridos.' });
+    }
+
+    // Check if user already exists
+    UserModel.findOne({ username: username })
+        .then(existingUser => {
+            if (existingUser) {
+                return res.status(400).json({ message: 'El usuario ya existe.' });
+            }
+
+            // Create new user (in production, hash the password with bcrypt)
+            const newUser = new UserModel({
+                username: username,
+                password: password, // TODO: Hash password with bcrypt
+                role: role || 'User'
+            });
+
+            return newUser.save();
+        })
+        .then(user => {
+            res.status(201).json({
+                message: 'Usuario registrado exitosamente.',
+                user: {
+                    username: user.username,
+                    role: user.role
+                }
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(500).json({ message: 'Error al registrar usuario.' });
+        });
+});
+
+// Login
+router.post('/login', function (req, res) {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Usuario y contraseña son requeridos.' });
+    }
+
+    UserModel.findOne({ username: username })
+        .then(user => {
+            if (!user) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+
+            // In production, use bcrypt.compare(password, user.password)
+            if (user.password !== password) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+
+            // Create session
+            const token = generateToken();
+            sessions[token] = {
+                user: {
+                    id: user._id,
+                    username: user.username,
+                    role: user.role
+                },
+                createdAt: Date.now()
+            };
+
+            res.status(200).json({
+                message: 'Login exitoso.',
+                token: token,
+                user: {
+                    username: user.username,
+                    role: user.role
+                }
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(500).json({ message: 'Error al iniciar sesión.' });
+        });
+});
+
+// Logout
+router.post('/logout', function (req, res) {
+    const token = req.headers['authorization'];
+
+    if (token && sessions[token]) {
+        delete sessions[token];
+    }
+
+    res.status(200).json({ message: 'Logout exitoso.' });
+});
+
+// Get current user
+router.get('/current-user', isAuthenticated, function (req, res) {
+    res.status(200).json({ user: req.user });
+});
+
+// ============================================
+// TASK ENDPOINTS (Protected)
+// ============================================
+
+// Create task (Admin only)
+router.post('/create-task', isAuthenticated, isAdmin, function (req, res) {
     let task_id = req.body.TaskId;
     let marca=req.body.Marca;
     let modelo=req.body.Modelo;
@@ -65,7 +212,8 @@ router.post('/create-task', function (req, res) {
         });
 });
 
-router.get('/all-tasks', function (req, res) {
+// Get all tasks (Authenticated users)
+router.get('/all-tasks', isAuthenticated, function (req, res) {
     TaskModel.find()
         .then(data => {
             res.status(200).send(data);
@@ -76,27 +224,44 @@ router.get('/all-tasks', function (req, res) {
         });
 });
 
-router.post('/update-task', function (req, res) {
+// Update task (Admin: all fields, User: only Cantidad)
+router.post('/update-task', isAuthenticated, function (req, res) {
+    let updateData = {};
+
+    // If user is Admin, allow updating all fields
+    if (req.user.role === 'Administrador') {
+        updateData = {
+            Marca: req.body.Marca,
+            Version: req.body.Version,
+            Modelo: req.body.Modelo,
+            Tipo: req.body.Tipo,
+            Cantidad: req.body.Cantidad
+        };
+    } else {
+        // If user is regular User, only allow updating Cantidad
+        updateData = {
+            Cantidad: req.body.Cantidad
+        };
+    }
+
     TaskModel.updateOne(
-        { TaskId: req.body.TaskId }, 
-        {
-            Marca:req.body.Marca,
-            Version:req.body.Version,
-            Modelo:req.body.Modelo,
-            Tipo:req.body.Tipo,
-            Cantidad:req.body.Cantidad
-        }
+        { TaskId: req.body.TaskId },
+        updateData
     )
         .then(data => {
-            res.status(200).send("OK\n");
+            res.status(200).json({
+                message: "Repuesto actualizado exitosamente",
+                updatedFields: req.user.role === 'Administrador' ? 'todos los campos' : 'solo cantidad'
+            });
         })
         .catch(err => {
             console.log(err);
-            res.status(500).send("Internal error\n");
+            res.status(500).json({ message: "Error al actualizar repuesto" });
         });
 });
 
-router.delete('/delete-task', function (req, res) {
+// Delete task (Admin only)
+router.delete('/delete-task', isAuthenticated, isAdmin, function (req, res) {
     TaskModel.deleteOne({ TaskId: req.body.TaskId })
         .then(data => {
             res.status(200).send("OK\n");

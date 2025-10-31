@@ -30,7 +30,7 @@ app.filter('safeFilter', function() {
 });
 
 // Main Controller
-app.controller('InventoryController', function($scope, $http) {
+app.controller('InventoryController', function($scope, $http, $window) {
 
     // Initialize variables
     $scope.tasks = [];
@@ -44,6 +44,11 @@ app.controller('InventoryController', function($scope, $http) {
     };
     $scope.alertMessage = '';
     $scope.alertType = 'success';
+
+    // User session data
+    $scope.currentUser = null;
+    $scope.isAdmin = false;
+    $scope.token = null;
 
     // Lista de marcas disponibles
     $scope.marcas = [
@@ -169,6 +174,52 @@ app.controller('InventoryController', function($scope, $http) {
 
     // API Base URL
     var apiUrl = '/api';
+
+    // Check authentication
+    $scope.checkAuth = function() {
+        $scope.token = localStorage.getItem('token');
+        var userStr = localStorage.getItem('user');
+
+        if (!$scope.token || !userStr) {
+            // Not logged in, redirect to login
+            $window.location.href = '/login.html';
+            return false;
+        }
+
+        $scope.currentUser = JSON.parse(userStr);
+        $scope.isAdmin = $scope.currentUser.role === 'Administrador';
+
+        console.log('Usuario actual:', $scope.currentUser);
+        console.log('Es admin:', $scope.isAdmin);
+
+        return true;
+    };
+
+    // Logout function
+    $scope.logout = function() {
+        if (!confirm('¿Está seguro que desea cerrar sesión?')) {
+            return;
+        }
+
+        $http.post(apiUrl + '/logout', {}, {
+            headers: { 'Authorization': $scope.token }
+        })
+        .then(function(response) {
+            console.log('Logout successful');
+        })
+        .catch(function(error) {
+            console.error('Logout error:', error);
+        })
+        .finally(function() {
+            // Clear localStorage and redirect
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            $window.location.href = '/login.html';
+        });
+    };
+
+    // Add token to all HTTP requests
+    $http.defaults.headers.common['Authorization'] = localStorage.getItem('token');
 
     // Calcular el próximo ID disponible
     $scope.calcularProximoId = function() {
@@ -350,6 +401,9 @@ app.controller('InventoryController', function($scope, $http) {
         $scope.alertMessage = '';
     };
 
-    // Load tasks on controller initialization
-    $scope.loadTasks();
+    // Initialize app - check authentication first
+    if ($scope.checkAuth()) {
+        // Load tasks on controller initialization
+        $scope.loadTasks();
+    }
 });

@@ -13,9 +13,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // API routes
 app.use('/api', api);
 
-// Root route - serve Angular app
+// Root route - serve Angular app (main inventory page)
 app.get('/', function (req, res) {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Login route
+app.get('/login.html', function (req, res) {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.listen(port, function () {

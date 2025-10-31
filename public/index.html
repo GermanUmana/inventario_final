@@ -21,6 +21,19 @@
                 <i class="fas fa-motorcycle me-2"></i>
                 Inventario de Repuestos para Moto
             </span>
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <strong>{{currentUser.username}}</strong>
+                    <span class="badge bg-{{isAdmin ? 'warning' : 'info'}} ms-2">
+                        {{currentUser.role}}
+                    </span>
+                </span>
+                <button class="btn btn-outline-light btn-sm" ng-click="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>
+                    Cerrar Sesión
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -32,12 +45,15 @@
             <button type="button" class="btn-close" ng-click="closeAlert()"></button>
         </div>
 
-        <!-- Create/Edit Task Form -->
-        <div class="card mb-4">
+        <!-- Create/Edit Task Form (Admin only for create, All users for edit quantity) -->
+        <div class="card mb-4" ng-show="isAdmin || isEditing">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">
                     <i class="fas fa-{{isEditing ? 'edit' : 'plus-circle'}} me-2"></i>
                     {{isEditing ? 'Editar' : 'Agregar'}} Repuesto
+                    <span ng-show="isEditing && !isAdmin" class="badge bg-warning ms-2">
+                        Solo puede editar la cantidad
+                    </span>
                 </h5>
             </div>
             <div class="card-body">
@@ -50,7 +66,8 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Marca</label>
-                            <select class="form-select" ng-model="newTask.Marca" ng-change="onMarcaChange()" required>
+                            <select class="form-select" ng-model="newTask.Marca" ng-change="onMarcaChange()"
+                                    ng-disabled="!isAdmin" required>
                                 <option value="">Seleccione una marca</option>
                                 <option ng-repeat="marca in marcas" value="{{marca}}">{{marca}}</option>
                             </select>
@@ -58,7 +75,7 @@
                         <div class="col-md-2">
                             <label class="form-label">Versión</label>
                             <select class="form-select" ng-model="newTask.Version"
-                                    ng-disabled="!newTask.Marca || getVersiones().length === 0" required>
+                                    ng-disabled="!isAdmin || !newTask.Marca || getVersiones().length === 0" required>
                                 <option value="">Seleccione una versión</option>
                                 <option ng-repeat="version in getVersiones()" value="{{version}}">{{version}}</option>
                             </select>
@@ -66,11 +83,11 @@
                         <div class="col-md-2">
                             <label class="form-label">Modelo</label>
                             <input type="number" class="form-control" ng-model="newTask.Modelo"
-                                   placeholder="2020" min="2010" max="2026" required>
+                                   placeholder="2020" min="2010" max="2026" ng-disabled="!isAdmin" required>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Tipo</label>
-                            <select class="form-select" ng-model="newTask.Tipo" required>
+                            <select class="form-select" ng-model="newTask.Tipo" ng-disabled="!isAdmin" required>
                                 <option value="">Seleccione un tipo</option>
                                 <option ng-repeat="tipo in tipos" value="{{tipo}}">{{tipo}}</option>
                             </select>
@@ -177,10 +194,11 @@
                                 <td>{{task.Version}}</td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-warning me-1"
-                                            ng-click="editTask(task)" title="Editar">
+                                            ng-click="editTask(task)"
+                                            title="{{isAdmin ? 'Editar' : 'Editar cantidad'}}">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-danger"
+                                    <button class="btn btn-sm btn-danger" ng-show="isAdmin"
                                             ng-click="deleteTask(task.TaskId)" title="Eliminar">
                                         <i class="fas fa-trash"></i>
                                     </button>
